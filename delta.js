@@ -14,7 +14,7 @@ if (cluster.isMaster) {
 	var filePaths = [];
 	var count = readyCount = 0;
 	var doFull = verbose = false;
-
+	
 	// Handling of command line args, don't touch (everything has a purpose).
 	for (var i = 2; process.argv[i]; i++) {
 		switch (process.argv[i]) {
@@ -64,11 +64,13 @@ if (cluster.isMaster) {
 	console.log('Spawning ' + child_processes +' workers...');
 	for (var i = 0; i < child_processes; i++) {
 		var worker = cluster.fork();
-		console.log('Worker ' + worker.pid + ' online!');
+		if (verbose) console.log('Worker ' + worker.pid + ' online!');
+
 		worker.on('message', function(msg) {
+			console.log(msg);
 			if (msg.ready) {
 				if (++readyCount === workers.length) {
-					console.log("All workers indicated they're ready, sending start signal...");
+					if (verbose) console.log("All workers indicated they're ready, sending start signal...");
 					workers.forEach(function(worker) {
 						worker.send( { start: true } );
 					});
@@ -93,13 +95,14 @@ if (cluster.isMaster) {
 						else {
 							console.log('Waiting for async calls to finish... ('+count+')');
 						}
-					}, 2000);
+					}, 1000);
 				}
 			}
 		});
+		worker.on('data', function(data) { console.log('\n\nERROR: ' + data); });
 		workers.push(worker);
 	}
-	console.log(workers.length + ' workers spawned successfully! Starting execution...');
+	if (verbose) console.log(workers.length + ' workers spawned successfully! Starting execution...');
 
 	exec("find " + directory  + " -type f -name '*.csv'", {maxBuffer: 5000*1024}, function(err, stdout, stderr) {
 		if (err) { console.log(err); }
