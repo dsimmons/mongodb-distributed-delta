@@ -1,10 +1,9 @@
 // Global requires
 cluster = require('cluster');
-mongo = require('mongoskin'),
-db = mongo.db('localhost:27017/research');
+db = require('mongoskin').db('localhost:27017/research');
 
 if (cluster.isMaster) {
-	require(__dirname+'/master.js');
+	require(__dirname+'/lib/master.js');
 } else {
-	require(__dirname+'/worker.js');
+	require(__dirname+'/lib/worker.js');
 }
