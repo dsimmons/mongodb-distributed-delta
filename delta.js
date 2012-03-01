@@ -8,12 +8,58 @@ var mongo = require('mongoskin'),
 	db = mongo.db('localhost:27017/research');
 
 if (cluster.isMaster) {
-	//var child_processes = (process.argv[2]) ? process.argv[2] : os.cpus().length;
-	var child_processes = 15; // hard-coded for now, TODO: parse based on arg flags
+	var child_processes = os.cpus().length;
+	var directory = process.cwd();
 	var workers = [];
 	var filePaths = [];
-	var directory = process.argv[2]; // TODO: parse based on arg flags
 	var count = readyCount = 0;
+	var doFull = verbose = false;
+
+	// Handling of command line args, don't touch (everything has a purpose).
+	for (var i = 2; process.argv[i]; i++) {
+		switch (process.argv[i]) {
+
+			case '-c':
+			case '--children':
+				if (process.argv[++i]) {
+					child_processes = process.argv[i];
+					console.log('Child processes set to ' + process.argv[i]);
+				}
+				break;
+
+			case '--full':
+				doFull = true;
+				console.log('Full database update enabled.');
+				break;
+
+			case '-v':
+			case '--verbose':
+				verbose = true;
+				console.log('Verbose output enabled.');
+				break;
+
+			case '-d':
+			case '--directory':
+				if (process.argv[++i] && !path.existsSync(process.argv[i])) {
+					console.log('Specified directory does not exist!');
+				} else {
+					directory = process.argv[i];
+					console.log('Root directory set to ' + process.argv[i]);
+					break;
+				}
+
+			case '-h':
+			case '--help':
+			default:
+				// Trial and error to get correct tab alignment (maybe add %10c <-- formatting later)
+				console.log('\nUsage: node delta [options]');
+				console.log('\t-c, --children \t\tNumber of child processes.\t\tdefault: # cores');
+				console.log('\t-d, --directory \tRoot directory to search for CSVs.\tdefault: cwd');
+				console.log('\t--full \t\t\tFull update and consistency check\tdefault: diff');
+				console.log('\t-v, --verbose \t\tVerbose printing to stdout.\t\tdefault: disabled');
+				process.exit(1);
+		}
+	}
 
 	console.log('Spawning ' + child_processes +' workers...');
 	for (var i = 0; i < child_processes; i++) {
@@ -55,9 +101,7 @@ if (cluster.isMaster) {
 	}
 	console.log(workers.length + ' workers spawned successfully! Starting execution...');
 
-	var dir = (process.argv[2] && path.existsSync(process.argv[2])) ? process.argv[2] : process.cwd();
-
-	exec("find " + dir + " -type f -name '*.csv'", {maxBuffer: 5000*1024}, function(err, stdout, stderr) {
+	exec("find " + directory  + " -type f -name '*.csv'", {maxBuffer: 5000*1024}, function(err, stdout, stderr) {
 		if (err) { console.log(err); }
 		if (stderr) { console.log(stderr); }
 
